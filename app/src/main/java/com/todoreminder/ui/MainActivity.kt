@@ -91,7 +91,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun observeTodos() {
-        viewModel.activeTodos.oberve(this) { todos ->
+        viewModel.activeTodos.observe(this) { todos ->
             adapter.submitList(todos)
             binding.textEmpty.visibility = if (todos.isEmpty()) {
                 android.view.View.VISIBLE

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Gradient background -->
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M0,0H108V108H0Z" />
+
+    <!-- Subtle pattern -->
+    <path
+        android:fillColor="#7B52B9"
+        android:pathData="M0,0H54V54H0Z"
+        android:fillAlpha="0.3" />
+
+    <path
+        android:fillColor="#4F378B"
+        android:pathData="M54,54H108V108H54Z"
+        android:fillAlpha="0.3" />
+
+</vector>

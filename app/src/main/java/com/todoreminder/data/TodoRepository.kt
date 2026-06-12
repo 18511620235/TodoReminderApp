@@ -1,6 +1,7 @@
 package com.todoreminder.data
 
 import kotlinx.coroutines.flow.Flow
+import java.util.Date
 
 class TodoRepository(private val todoDao: TodoDao) {
 
@@ -24,7 +25,7 @@ class TodoRepository(private val todoDao: TodoDao) {
     }
 
     suspend fun markAsCompleted(id: Long) {
-        todoDao.markAsCompleted(id)
+        todoDao.markAsCompleted(id, Date())
     }
 
     suspend fun markAsActive(id: Long) {

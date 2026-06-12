@@ -2,6 +2,7 @@ package com.todoreminder.data
 
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
+import java.util.Date
 
 @Dao
 interface TodoDao {
@@ -25,7 +26,7 @@ interface TodoDao {
     suspend fun deleteTodo(todo: TodoEntity)
 
     @Query("UPDATE todos SET isCompleted = 1, completedAt = :completedAt WHERE id = :id")
-    suspend fun markAsCompleted(id: Long, completedAt: Date = Date())
+    suspend fun markAsCompleted(id: Long, completedAt: Date)
 
     @Query("UPDATE todos SET isCompleted = 0, completedAt = NULL WHERE id = :id")
     suspend fun markAsActive(id: Long)

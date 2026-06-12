@@ -13,6 +13,7 @@ import com.todoreminder.data.TodoEntity
 import com.todoreminder.data.TodoRepository
 import com.todoreminder.databinding.ActivityAddEditTodoBinding
 import com.todoreminder.TodoReminderApplication
+import com.todoreminder.worker.AlarmScheduler
 import kotlinx.coroutines.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -139,6 +140,18 @@ class AddEditTodoActivity : AppCompatActivity() {
                 binding.editPollingEndDate.setText(dateFormat.format(date))
             }
         }
+
+        binding.editPollingStartTime.setOnClickListener {
+            showTimePicker { time ->
+                binding.editPollingStartTime.setText(timeFormat.format(time))
+            }
+        }
+
+        binding.editPollingEndTime.setOnClickListener {
+            showTimePicker { time ->
+                binding.editPollingEndTime.setText(timeFormat.format(time))
+            }
+        }
     }
 
     private fun showDatePicker(onDateSelected: (Date) -> Unit) {
@@ -210,21 +223,81 @@ class AddEditTodoActivity : AppCompatActivity() {
 
         val description = binding.editDescription.text.toString()
 
+        // Build TodoEntity with reminder time fields populated from form
         val todo = TodoEntity(
             id = if (isEditMode) todoId else 0,
             title = title,
             description = description,
             reminderType = selectedReminderType,
-            isCompleted = false
+            isCompleted = false,
+            singleReminderTime = if (selectedReminderType == 0) parseDateTime(
+                binding.editSingleDate.text.toString(),
+                binding.editSingleTime.text.toString()
+            ) else null,
+            repeatStartDate = if (selectedReminderType == 1) parseDateOnly(binding.editRepeatStartDate.text.toString()) else null,
+            repeatEndDate = if (selectedReminderType == 1) parseDateOnly(binding.editRepeatEndDate.text.toString()) else null,
+            timePoints = if (selectedReminderType == 1) timePoints.joinToString(",") { "\"$it\"" }.let { "[$it]" } else "",
+            pollingStartDate = if (selectedReminderType == 2) parseDateOnly(binding.editPollingStartDate.text.toString()) else null,
+            pollingEndDate = if (selectedReminderType == 2) parseDateOnly(binding.editPollingEndDate.text.toString()) else null,
+            pollingStartTime = if (selectedReminderType == 2) binding.editPollingStartTime.text.toString().takeIf { it.isNotEmpty() } else null,
+            pollingEndTime = if (selectedReminderType == 2) binding.editPollingEndTime.text.toString().takeIf { it.isNotEmpty() } else null,
+            pollingIntervalHours = if (selectedReminderType == 2) binding.editIntervalHours.text.toString().toIntOrNull() ?: 0 else 0,
+            pollingIntervalMinutes = if (selectedReminderType == 2) binding.editIntervalMinutes.text.toString().toIntOrNull() ?: 0 else 0
         )
 
+        // Validate: at least set a reminder time
+        if (!validateReminderTime(todo)) {
+            Toast.makeText(this, "请设置提醒时间", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val scheduler = AlarmScheduler(this)
+
         CoroutineScope(Dispatchers.IO).launch {
-            if (isEditMode) {
+            val savedId = if (isEditMode) {
                 repository.updateTodo(todo)
+                // Cancel old alarm and reschedule
+                scheduler.cancelReminder(todoId)
+                todoId
             } else {
                 repository.insertTodo(todo)
             }
-            finish()
+
+            // Schedule the alarm with the actual todo ID
+            val todoWithId = todo.copy(id = savedId)
+            scheduler.scheduleReminder(todoWithId)
+
+            withContext(Dispatchers.Main) {
+                finish()
+            }
+        }
+    }
+
+    private fun validateReminderTime(todo: TodoEntity): Boolean {
+        return when (todo.reminderType) {
+            0 -> todo.singleReminderTime != null
+            1 -> todo.repeatStartDate != null && todo.repeatEndDate != null && todo.timePoints.isNotEmpty()
+            2 -> todo.pollingStartDate != null && todo.pollingEndDate != null && (todo.pollingIntervalHours > 0 || todo.pollingIntervalMinutes > 0)
+            else -> false
+        }
+    }
+
+    private fun parseDateTime(dateStr: String, timeStr: String): Date? {
+        if (dateStr.isEmpty() || timeStr.isEmpty()) return null
+        return try {
+            val fullStr = "$dateStr $timeStr"
+            SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).parse(fullStr)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun parseDateOnly(dateStr: String): Date? {
+        if (dateStr.isEmpty()) return null
+        return try {
+            dateFormat.parse(dateStr)
+        } catch (e: Exception) {
+            null
         }
     }
 

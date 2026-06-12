@@ -37,7 +37,7 @@ class AlarmScheduler(private val context: Context) {
             val triggerTime = reminderTime.time
 
             if (triggerTime > System.currentTimeMillis()) {
-                setAlarm(todo.id, triggerTime, todo.title, todo.description)
+                setAlarm(todo.id, triggerTime, todo.title, todo.description, todo.reminderType)
             }
         }
     }
@@ -66,7 +66,8 @@ class AlarmScheduler(private val context: Context) {
                                 todo.id,
                                 calendar.timeInMillis,
                                 todo.title,
-                                todo.description
+                                todo.description,
+                                todo.reminderType
                             )
                         }
                     }
@@ -93,7 +94,8 @@ class AlarmScheduler(private val context: Context) {
                                         todo.id,
                                         triggerTime,
                                         todo.title,
-                                        todo.description
+                                        todo.description,
+                                        todo.reminderType
                                     )
                                 }
                                 triggerTime += intervalMillis
@@ -105,11 +107,12 @@ class AlarmScheduler(private val context: Context) {
         }
     }
 
-    private fun setAlarm(id: Long, triggerTime: Long, title: String, description: String) {
+    private fun setAlarm(id: Long, triggerTime: Long, title: String, description: String, reminderType: Int) {
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             putExtra("todo_id", id)
             putExtra("todo_title", title)
             putExtra("todo_description", description)
+            putExtra("reminder_type", reminderType)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(

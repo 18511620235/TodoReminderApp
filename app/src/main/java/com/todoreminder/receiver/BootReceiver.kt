@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.todoreminder.data.TodoDatabase
 import com.todoreminder.data.TodoRepository
+import com.todoreminder.worker.AlarmScheduler
 
 class BootReceiver : BroadcastReceiver() {
 
@@ -18,22 +19,35 @@ class BootReceiver : BroadcastReceiver() {
 
             Log.d("BootReceiver", "Device booted, rescheduling reminders")
 
-            // Reschedule all active reminders
-            rescheduleReminders(context)
-        }
-    }
+            val database = TodoDatabase.getDatabase(context)
+            val repository = TodoRepository(database.todoDao())
+            val scheduler = AlarmScheduler(context)
 
-    private fun rescheduleReminders(context: Context) {
-        val database = TodoDatabase.getDatabase(context)
-        val repository = TodoRepository(database.todoDao())
-
-        CoroutineScope(Dispatchers.IO).launch {
-            val activeTodos = repository.activeTodos
-
-            // This is a simplified version - in reality, you'd need to collect the flow
-            // and reschedule alarms for each todo
-
-            Log.d("BootReceiver", "Reminders rescheduled")
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    // Collect all active (non-completed) todos
+                    repository.activeTodos.collect { todos ->
+                        for (todo in todos) {
+                            if (todo.reminderType == 0) {
+                                // Only reschedule if the reminder time is still in the future
+                                todo.singleReminderTime?.let {
+                                    if (it.time > System.currentTimeMillis()) {
+                                        scheduler.scheduleReminder(todo)
+                                    }
+                                }
+                            } else {
+                                // For repeat modes, reschedule (the scheduler will filter past times)
+                                scheduler.scheduleReminder(todo)
+                            }
+                        }
+                        // Only need first emission
+                        return@launch
+                    }
+                    Log.d("BootReceiver", "Reminders rescheduled successfully")
+                } catch (e: Exception) {
+                    Log.e("BootReceiver", "Failed to reschedule reminders", e)
+                }
+            }
         }
     }
 }

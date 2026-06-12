@@ -6,6 +6,11 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.todoreminder.R
+import com.todoreminder.data.TodoDatabase
+import com.todoreminder.data.TodoRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class ReminderReceiver : BroadcastReceiver() {
 
@@ -13,10 +18,24 @@ class ReminderReceiver : BroadcastReceiver() {
         val todoId = intent.getLongExtra("todo_id", -1)
         val todoTitle = intent.getStringExtra("todo_title") ?: "待办提醒"
         val todoDescription = intent.getStringExtra("todo_description") ?: ""
+        val reminderType = intent.getIntExtra("reminder_type", 0)
 
         if (todoId == -1L) return
 
         showNotification(context, todoId, todoTitle, todoDescription)
+
+        // For single reminders, auto-mark as completed after notification fires
+        if (reminderType == 0) {
+            markTodoAsCompleted(context, todoId)
+        }
+    }
+
+    private fun markTodoAsCompleted(context: Context, todoId: Long) {
+        val database = TodoDatabase.getDatabase(context)
+        val repository = TodoRepository(database.todoDao())
+        CoroutineScope(Dispatchers.IO).launch {
+            repository.markAsCompleted(todoId)
+        }
     }
 
     private fun showNotification(

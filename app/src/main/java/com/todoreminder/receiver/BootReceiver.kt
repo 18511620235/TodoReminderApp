@@ -6,6 +6,7 @@ import android.content.Intent
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.todoreminder.data.TodoDatabase
 import com.todoreminder.data.TodoRepository
@@ -25,23 +26,20 @@ class BootReceiver : BroadcastReceiver() {
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    // Collect all active (non-completed) todos
-                    repository.activeTodos.collect { todos ->
-                        for (todo in todos) {
-                            if (todo.reminderType == 0) {
-                                // Only reschedule if the reminder time is still in the future
-                                todo.singleReminderTime?.let {
-                                    if (it.time > System.currentTimeMillis()) {
-                                        scheduler.scheduleReminder(todo)
-                                    }
+                    // Get first emission of active todos
+                    val todos = repository.activeTodos.first()
+                    for (todo in todos) {
+                        if (todo.reminderType == 0) {
+                            // Only reschedule if the reminder time is still in the future
+                            todo.singleReminderTime?.let {
+                                if (it.time > System.currentTimeMillis()) {
+                                    scheduler.scheduleReminder(todo)
                                 }
-                            } else {
-                                // For repeat modes, reschedule (the scheduler will filter past times)
-                                scheduler.scheduleReminder(todo)
                             }
+                        } else {
+                            // For repeat modes, reschedule (the scheduler will filter past times)
+                            scheduler.scheduleReminder(todo)
                         }
-                        // Only need first emission
-                        return@launch
                     }
                     Log.d("BootReceiver", "Reminders rescheduled successfully")
                 } catch (e: Exception) {

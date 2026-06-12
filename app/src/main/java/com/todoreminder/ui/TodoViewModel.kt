@@ -2,6 +2,7 @@ package com.todoreminder.ui
 
 import android.app.Application
 import androidx.lifecycle.*
+import com.todoreminder.TodoReminderApplication
 import com.todoreminder.data.TodoEntity
 import com.todoreminder.data.TodoRepository
 import kotlinx.coroutines.launch
